@@ -940,13 +940,20 @@ __device__ void process_internal_diagonals_long_phase(const int xLen, const int 
 //__launch_bounds__(THREADS_COUNT,MIN_BLOCKS_PER_SM)
 // TODO testar com template FLUSH_LAST_ROW, pois ficou mais lento!
 template <int RECURRENCE_TYPE, bool CHECK_MAX_SCORE>
-__global__ void kernel_long_phase(
+//__global__ void kernel_long_phase(
+//		const int i0, const int i1,
+//		const int step,
+//		const int2 cutBlock, int4 *blockResult,
+//		int2* busH, int2* extraH,
+//		int4* busV_h, int4* busV_e, int3* busV_o)
+__global__ void BACKUP_KERNEL_DEF(kernel_long_phase,
 		const int i0, const int i1,
 		const int step,
 		const int2 cutBlock, int4 *blockResult,
 		int2* busH, int2* extraH,
 		int4* busV_h, int4* busV_e, int3* busV_o)
 {
+  BACKUP_CONTINUE();
 	const int bx = blockIdx.x;
 	if (bx < cutBlock.x || bx > cutBlock.y) {
 		// Block Pruning
@@ -1163,9 +1170,9 @@ __global__ void kernel_single_phase(
  * @param[in] len		length of the range to be initialized (j0, j0+len).
  */
 template<int H, int F>
-//static __global__ void kernel_initialize_busH_ungapped(int2* busH, const int j0, const int len) {
-static __global__ void BACKUP_KERNEL_DEF(kernel_initialize_busH_ungapped,int2* busH, const int j0, const int len) {
-    BACKUP_CONTINUE();
+static __global__ void kernel_initialize_busH_ungapped(int2* busH, const int j0, const int len) {
+//static __global__ void BACKUP_KERNEL_DEF(kernel_initialize_busH_ungapped,int2* busH, const int j0, const int len) {
+    //BACKUP_CONTINUE();
     int tidx = blockIdx.x*blockDim.x + threadIdx.x;
     while (tidx < len) {
 		busH[j0+tidx].x = H;
@@ -1216,9 +1223,9 @@ void copy_split(const int* split, const int blocks) {
 void initializeBusHInfinity(const int p0, const int p1, int2* d_busH) {
 	dim3 threads(512, 1, 1);
 	dim3 blocks(MAX_BLOCKS_COUNT, 1, 1);
-	//kernel_initialize_busH_ungapped<-INF,-INF><<<threads, blocks>>>(d_busH, p0, p1-p0);
-  BACKUP_config(0.001, backupDoMemcpyFalse, backupIncreaseQuantumTrue, 0.001);
-	BACKUP_KERNEL_LAUNCH((kernel_initialize_busH_ungapped<-INF,-INF>),threads, blocks,0,0,d_busH, p0, p1-p0);
+	kernel_initialize_busH_ungapped<-INF,-INF><<<threads, blocks>>>(d_busH, p0, p1-p0);
+  //BACKUP_config(0.001, backupDoMemcpyFalse, backupIncreaseQuantumTrue, 0.001);
+	//BACKUP_KERNEL_LAUNCH((kernel_initialize_busH_ungapped<-INF,-INF>),threads, blocks,0,0,d_busH, p0, p1-p0);
 	cutilCheckMsg("Kernel execution failed");
 }
 //void CUDAligner::initializeBusHUngapped(const int p0, const int p1) {
@@ -1270,7 +1277,9 @@ void lauch_external_diagonals(const int blocks, const int threads,
 		kernel_single_phase<COLUMN_SOURCE, COLUMN_DESTINATION, RECURRENCE_TYPE, CHECK_LOCATION><<< grid, block, 0>>>(i0, i1, step, cutBlock, cuda->d_blockResult, cuda->d_busH, cuda->d_extraH, cuda->d_busV_h, cuda->d_busV_e, cuda->d_busV_o, cuda->d_loadColumnH, cuda->d_loadColumnE, cuda->d_flushColumnH, cuda->d_flushColumnE);
 	} else {
 		static dim3 block( THREADS_COUNT, 1, 1);
-		kernel_long_phase<RECURRENCE_TYPE, CHECK_LOCATION><<< grid, threads, 0>>>(i0, i1, step-1, cutBlock, cuda->d_blockResult, cuda->d_busH, cuda->d_extraH, cuda->d_busV_h, cuda->d_busV_e, cuda->d_busV_o);
+		//kernel_long_phase<RECURRENCE_TYPE, CHECK_LOCATION><<< grid, threads, 0>>>(i0, i1, step-1, cutBlock, cuda->d_blockResult, cuda->d_busH, cuda->d_extraH, cuda->d_busV_h, cuda->d_busV_e, cuda->d_busV_o);
+    BACKUP_config(0.001, backupDoMemcpyFalse, backupIncreaseQuantumTrue, 0.001);
+		BACKUP_KERNEL_LAUNCH((kernel_long_phase<RECURRENCE_TYPE, CHECK_LOCATION>),grid, threads, 0,0,i0, i1, step-1, cutBlock, cuda->d_blockResult, cuda->d_busH, cuda->d_extraH, cuda->d_busV_h, cuda->d_busV_e, cuda->d_busV_o);
 		kernel_short_phase<COLUMN_SOURCE, COLUMN_DESTINATION, RECURRENCE_TYPE, CHECK_LOCATION><<< grid, threads, 0>>>(i0, i1, step, cutBlock, cuda->d_blockResult, cuda->d_busH, cuda->d_extraH, cuda->d_busV_h, cuda->d_busV_e, cuda->d_busV_o, cuda->d_loadColumnH, cuda->d_loadColumnE, cuda->d_flushColumnH, cuda->d_flushColumnE);
 	}
 	cudaStreamSynchronize(0);
