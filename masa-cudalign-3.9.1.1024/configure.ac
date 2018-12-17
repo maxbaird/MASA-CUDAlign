@@ -117,8 +117,8 @@ AM_CONDITIONAL([COMPILE_CUDA], [test "x$CUDA_HOME" != "xno"])
 
 AS_IF([test "x$CUDA_HOME" != "xno"], [
 
-	CUDA_CFLAGS="-I$CUDA_HOME/include"
-	CUDA_LIBS="-L$CUDA_HOME/$CUDA_LIB_DIR"
+	CUDA_CFLAGS="-I$CUDA_HOME/include -I/home/mbaird/cuda_backup_install/include"
+	CUDA_LIBS="-L$CUDA_HOME/$CUDA_LIB_DIR -L/home/mbaird/cuda_backup_install/lib -lbackup"
 	CUDA_LDFLAGS="-L$CUDA_HOME/$CUDA_LIB_DIR"
 
 	AC_CHECK_FILE($CUDA_HOME/$CUDA_LIB_DIR/libcudart.so, [],
